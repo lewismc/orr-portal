@@ -13,8 +13,6 @@ var fs          = require('fs');
 var extend      = require('extend');
 var karma       = require('karma');
 
-var runSequence = require('run-sequence');
-
 //////////////////////////
 // for minified version
 // js: using uglify for now.
@@ -48,8 +46,15 @@ if (installDest) {
   gutil.log('Install destination: ' +installDest);
 }
 
-gulp.task('default', dist);
+/////////////////////////////////////////////////////////////////////////////
+// dist
 
+gulp.task('dist', function(done) {
+  gulp.series('clean', 'package', 'min');
+  done();
+});
+
+gulp.task('default', gulp.series('dist'));
 
 /////////////////////////////////////////////////////////////////////////////
 // local development/testing
@@ -66,16 +71,9 @@ gulp.task('dev', function() {
       }));
 });
 
-gulp.task('clean', function (cb) {
+gulp.task('clean', (cb) => {
     rimraf(distDest, cb);
 });
-
-/////////////////////////////////////////////////////////////////////////////
-// dist
-
-function dist(cb) {
-  runSequence('clean', 'package', 'min', cb);
-};
 
 gulp.task('app', gulp.series('clean'), function(){
   var src = ['./src/app/**', '!./src/app/**/*.html'];
@@ -133,13 +131,13 @@ gulp.task('package', gulp.series('dist-directory'), function(){
 /////////////////////////////////////////////////////////////////////////////
 // install
 
-function check_dest() {
+function check_dest(cb) {
   if (installDest === undefined) throw Error("install needs --dest=dir");
   if (!fs.lstatSync(installDest).isDirectory()) throw Error(installDest+ " is not a directory");
   cb()
 };
 
-gulp.task('install', gulp.series(check_dest, dist), function(){
+gulp.task('install', gulp.series(check_dest, 'dist'), function(){
   return gulp.src([distDest + '/**'])
     .pipe(gulp.dest(installDest));
 });
@@ -176,7 +174,6 @@ gulp.task('ci', function () {
 
 
 /////////////////////////////////////////////////////////////////////////////
-
 gulp.task('app-index-and-config', function () {
   var cfgSrc = ['./src/app/js/config.js'];
   if (gutil.env.localConfig) {
